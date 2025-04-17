@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-_mu^a1_rg-_xw5_b6nqzziyo*!!$1wnd#w19%t7prw&501svv8'
+OTP_SECRET="base32secret3232"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -39,7 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'trading_app',  # Your trading app
     'rest_framework',  # Django REST framework
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
+    'users',  # Your users app
+    'utils',  # Your utils app
 
 ]
 
@@ -131,3 +134,18 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = '823b70001@smtp-brevo.com'
+EMAIL_HOST_PASSWORD = 'cTmINCBKwfd0Q21Y'
+DEFAULT_FROM_EMAIL = '823b70001@smtp-brevo.com'
+
+
+
+
+
+
+
+
