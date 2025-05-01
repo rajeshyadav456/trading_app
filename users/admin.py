@@ -1,23 +1,9 @@
 from django.contrib import admin
-from .models import UserProfile, SignalProviderProfile, SingnalProviderPost, \
-SignalProviderPostItem, LikeSingalProviderPost,ComentSignalProviderPost, \
-LikeCommentSignalProviderPost, UserFollewRequest, BlockUser, ReportCommentAbuse, PhoneModel, EmailModel
-
+from .models import User, SingnalProviderPost,  SignalProviderPostItem, LikeSingalProviderPost,ComentSignalProviderPost, \
+LikeCommentSignalProviderPost, UserFollewRequest, BlockUser, ReportCommentAbuse, PhoneModel, EmailModel, Asset
 # Register your models here.
 
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'email', 'mobile', 'is_suspended')
-    search_fields = ('email',)
-    list_filter = ('email', 'mobile', 'is_suspended')
-    ordering = ('user',)
-    list_per_page = 500
 
-class SingnalProviderProfileAdmin(admin.ModelAdmin):
-    list_display = ('email', 'mobile', 'is_approved')
-    search_fields = ('email',)
-    list_filter = ('email', 'mobile', 'is_approved')
-    ordering = ('user',)
-    list_per_page = 500
 
 class SingnalProviderPostAdmin(admin.ModelAdmin):
     list_display = ('caption', 'is_premium', 'is_approved', 'created_at')
@@ -68,9 +54,7 @@ class UserFollewRequestAdmin(admin.ModelAdmin):
     ordering = ('user',)
     list_per_page = 500
 
-
-admin.site.register(UserProfile, UserProfileAdmin)
-admin.site.register(SignalProviderProfile, SingnalProviderProfileAdmin)
+admin.site.register(User)
 admin.site.register(SingnalProviderPost, SingnalProviderPostAdmin)
 admin.site.register(SignalProviderPostItem, SignalProviderPostItemAdmin)
 admin.site.register(LikeSingalProviderPost, LikeSignalProviderPostAdmin)
@@ -81,3 +65,5 @@ admin.site.register(BlockUser)
 admin.site.register(ReportCommentAbuse)
 admin.site.register(PhoneModel)
 admin.site.register(EmailModel)
+admin.site.register(Asset)
+
