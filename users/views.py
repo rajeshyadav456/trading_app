@@ -10,22 +10,74 @@ from utils.app_mixin import generic_response, validate_field_not_request_body, g
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import get_user_model
+User = get_user_model()
+from .tokens import CustomAccessToken
+
 # Create your views here.
+
+class LoginAPIView(APIView):
+    authentication_classes = []  
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            email = request.data.get('email', None)
+            mobile = request.data.get('mobile', None)
+            password = request.data.get('password', None)
+
+            if email:
+                user = authenticate(email=email, password=password)
+                user = User.objects.filter(email=email).first()
+                
+
+            if mobile:
+                user = authenticate(mobile=mobile, password=password)
+                user = User.objects.filter(mobile=mobile).first()
+              
+
+            if user is None:
+                return generic_response(status.HTTP_400_BAD_REQUEST, 'User not found')
+
+            login(request,user)
+            jwt_token = CustomAccessToken.for_user(user)
+
+            return Response({'message':'Login Successfully', 'user_type':user.user_type if user else None, 'token':str(jwt_token)})
+
+        except Exception as ex:
+            return generic_response(status.HTTP_404_NOT_FOUND, f'Error while creating: {str(ex)}')
+
+
+class SuperuserLoginAPIView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            email = data.get('email')
+            password = data.get('password')
+
+            user = authenticate(email=email, password=password)
+            
+        except Exception as ex:
+            return generic_response(status.HTTP_404_NOT_FOUND, f'Error while login: {str(ex)}')
+
 class RegisterAPIView(APIView):
     """
     User Registration API View
     """
+    authentication_classes = []  
+    permission_classes = [AllowAny]
+
     def post(self, request):
         try:
             data = request.data
             serializer = RegisterSerializer(data=data)
-
-            if not serializer.is_valid():
-                return generic_response(status.HTTP_400_BAD_REQUEST, serializer.errors)
-                    
-            instance = serializer.save()
             
-            data = {'user': instance[0].id, 'signal_provider': instance[1].id}
+            if not serializer.is_valid():
+                return generic_response(status.HTTP_400_BAD_REQUEST, f'{serializer.errors}')  
+
+            serializer.save()
 
             return generic_response(status.HTTP_201_CREATED, 'User created successfully', data=data)
             
@@ -38,6 +90,9 @@ class GenerateOtpAPIView(APIView):
     """
     Generate OTP for user registration
     """
+    authentication_classes = []  
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         try:
             data = request.data
@@ -93,6 +148,9 @@ class GenerateOtpUsingEmailAPIView(APIView):
     """
     Generate OTP for user registration using email
     """
+    authentication_classes = []  
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         try:
             data = request.data
@@ -119,13 +177,16 @@ class GenerateOtpUsingEmailAPIView(APIView):
                 </html>
             """
             recipient_list = [instance.email]
-
-            # Send email
-            send_otp_email(
-                subject=subject,
-                recipient_email_list=recipient_list,
-                html_content=html_content
-            )
+            try:
+                # Send email
+                send_otp_email(
+                    subject=subject,
+                    recipient_email_list=recipient_list,
+                    html_content=html_content
+                )
+                print(send_otp_email, 'send_otp_email')
+            except Exception as ex:
+                return generic_response(status.HTTP_400_BAD_REQUEST, f'Email not working {str(ex)}')
 
             return generic_response(status.HTTP_201_CREATED, 'OTP sent successfully', data=data)
 
@@ -137,26 +198,27 @@ class UserProfileAPIView(APIView):
     """
     User Profile API View
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated, )
 
-    def patch(self, request, *args, **kwargs):
+    def patch(self, request):
         try:
             user = request.user
             data = request.data
-            if not user.user_type == 'User':
+            if not user.user_type == 'USER':
                 return generic_response(status.HTTP_403_FORBIDDEN, 'User is not a normal user')
 
-            user_profile = User.objects.filter(user=user.id).first()
+            user_profile = User.objects.filter(id=user.id).first()
+            print(user_profile, 'user_profile')
             if not user_profile:
                 return generic_response(status.HTTP_404_NOT_FOUND, 'User profile not found')
 
-            serializer = UserProfileSerializer(user, data=data, partial=True)
+            serializer = UserProfileSerializer(user_profile, data=data, partial=True)
 
             if not serializer.is_valid():
-                return generic_response(status.HTTP_400_BAD_REQUEST, serializer.errors)
+                return generic_response(status.HTTP_400_BAD_REQUEST, f'{serializer.errors}')
 
-            instance = serializer.save()
-            return generic_response(status.HTTP_200_OK, 'User profile updated successfully', data=instance)
+            serializer.save()
+            return generic_response(status.HTTP_200_OK, 'User profile updated successfully', data=data)
 
         except Exception as e:
             return generic_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f'Error while updating: {str(e)}')
@@ -164,14 +226,15 @@ class UserProfileAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
-            if not user.user_type == 'User':
+            print(user.user_type, 'user_type')
+            if not user.user_type == 'USER':
                 return generic_response(status.HTTP_403_FORBIDDEN, 'User is not a normal user')
 
-            user_profile = User.objects.filter(id=user.id, user_type='User').first()
+            user_profile = User.objects.filter(id=user.id, user_type='USER').first()
             if not user_profile:
                 return generic_response(status.HTTP_404_NOT_FOUND, 'User profile not found')
 
-            serialized_data = UserProfileSerializer(user_profile).data
+            serialized_data = GetUserProfileSerializer(user_profile).data
             return generic_response(status.HTTP_200_OK, 'User profile fetched successfully', data=serialized_data)
 
         except Exception as e:
@@ -187,7 +250,7 @@ class SignalProviderProfileAPIView(APIView):
         try:
             user = request.user
             data = request.data
-            if not user.user_type == 'SignalProvider':
+            if not user.user_type == 'SIGNAL_PROVIDER':
                 return generic_response(status.HTTP_403_FORBIDDEN, 'User is not a signal provider')
 
             signal_provider_profile = User.objects.filter(id=user.id).first()
@@ -208,7 +271,7 @@ class SignalProviderProfileAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
-            if not user.user_type == 'SignalProvider':
+            if not user.user_type == 'SIGNAL_PROVIDER':
                 return generic_response(status.HTTP_403_FORBIDDEN, 'User is not a signal provider')
 
             signal_provider_profile = User.objects.filter(id=user.id).first()
@@ -216,7 +279,7 @@ class SignalProviderProfileAPIView(APIView):
                 return generic_response(status.HTTP_404_NOT_FOUND, 'Signal provider profile not found')
 
             serialized_data = SignalProviderProfileSerializer(signal_provider_profile).data
-            return generic_response(status.HTTP_200_OK, 'Signal provider profile fetched successfully')
+            return generic_response(status.HTTP_200_OK, data=serialized_data)
 
         except Exception as e:
             return generic_response(status.HTTP_500_INTERNAL_SERVER_ERROR, f'Error while fetching: {str(e)}')
@@ -227,8 +290,13 @@ class AssestAPIView(APIView):
     Asset API View
     """
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         try:
+            user = request.user
+            if not user.is_superuser:
+                return generic_response(status.HTTP_400_BAD_REQUEST, 'User is not Superuser')
+
             data = request.data
             serializer = AssetSerializer(data=data)
 
@@ -244,6 +312,10 @@ class AssestAPIView(APIView):
     def patch(self, request, *args, **kwargs):
         try:
             data = request.data
+            user = request.user
+            if not user.is_superuser:
+                return generic_response(status.HTTP_404_NOT_FOUND, 'User is not superuser')
+
             asset_id = Assest.objects.filter(id=kwargs['id']).first()
             if not asset_id:
                 return generic_response(status.HTTP_404_NOT_FOUND, 'Asset not found')
@@ -261,6 +333,10 @@ class AssestAPIView(APIView):
 
     def get(self, request):
         try:
+            user = request.user
+            if not user.is_superuser:
+                return generic_response(status.HTTP_404_NOT_FOUND, 'User not Superuser')
+
             assets = Asset.objects.all()
             serialized_data = AssetSerializer(assets, many=True).data
             return get_pure_paginated_response(serialized_data, request)

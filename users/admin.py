@@ -3,7 +3,8 @@ from .models import User, SingnalProviderPost,  SignalProviderPostItem, LikeSing
 LikeCommentSignalProviderPost, UserFollewRequest, BlockUser, ReportCommentAbuse, PhoneModel, EmailModel, Asset
 # Register your models here.
 
-
+class Useradmin(admin.ModelAdmin):
+    list_display = ('user_type', 'email', 'mobile', 'gender')
 
 class SingnalProviderPostAdmin(admin.ModelAdmin):
     list_display = ('caption', 'is_premium', 'is_approved', 'created_at')
@@ -54,7 +55,7 @@ class UserFollewRequestAdmin(admin.ModelAdmin):
     ordering = ('user',)
     list_per_page = 500
 
-admin.site.register(User)
+admin.site.register(User, Useradmin)
 admin.site.register(SingnalProviderPost, SingnalProviderPostAdmin)
 admin.site.register(SignalProviderPostItem, SignalProviderPostItemAdmin)
 admin.site.register(LikeSingalProviderPost, LikeSignalProviderPostAdmin)

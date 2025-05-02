@@ -23,31 +23,38 @@ from django.db.models import JSONField
 import pdb
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from trading_app.models import *
+from .enums import *
 
 # # Create your models here.
 
 
 class MyUserManager(BaseUserManager):
-    def _create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError('The email field must be set')
-        user = self.model(email=email, **extra_fields)
+    def _create_user(self, email=None, mobile=None, password=None, **extra_fields):
+        # if not email:
+        #     raise ValueError('The email field must be set')
+        if email:
+            user = self.model(email=email, **extra_fields)
+
+        if mobile:
+            user = self.model(mobile=mobile, **extra_fields)
+
         user.set_password(password)
         user.save(using=self._db)
         return user
-    def create_user(self,email,**extra_fields):
+
+    def create_user(self,email=None, mobile=None,**extra_fields):
         extra_fields.setdefault('is_staff',False)
         extra_fields.setdefault('is_superuser',False)
         extra_fields.setdefault('is_active',True)
-        return self._create_user(email,**extra_fields)
+        return self._create_user(email, mobile, **extra_fields)
     
-    def create_admin(self,email,password,**extra_fields):
+    def create_admin(self,email,mobile, password,**extra_fields):
         extra_fields.setdefault('is_staff',True)
         extra_fields.setdefault('is_superuser',False)
         extra_fields.setdefault('is_active',True)
-        return self._create_user(email,password,**extra_fields)
+        return self._create_user(email,mobile, password,**extra_fields)
     
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(self, email, mobile, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active',True)
@@ -55,19 +62,10 @@ class MyUserManager(BaseUserManager):
             raise ValueError('Superuser must have is_staff=True.')
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
-        return self._create_user(email, password, **extra_fields)
+        return self._create_user(email, mobile, password, **extra_fields)
         
     
-class User(AbstractBaseUser,PermissionsMixin): 
-    USER_TYPE = (
-        ('USER', 'User'),
-        ('SIGNAL_PROVIDER', 'Signal Provider'),
-    )
-    GENDER_CHOICE = (
-        ('MALE', 'Male'),
-        ('FEMALE', 'Female'),
-        ('Prefer not to say', 'Prefer not to say')
-    )
+class User(CommonTimeStamp, AbstractBaseUser,PermissionsMixin): 
     email = models.EmailField(null=True,blank=True,default="",unique=True)
     username = models.CharField(max_length=150,null=True,blank=True ,unique=True)
     first_name = models.CharField(max_length=150,null=True,blank=True)
@@ -78,16 +76,17 @@ class User(AbstractBaseUser,PermissionsMixin):
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now=True)
-    user_type = models.CharField(choices=USER_TYPE,max_length=250)
+    user_type = models.CharField(max_length=100,choices=UserType.choices())
     profile_image = models.ImageField(verbose_name="Profile Image",default='/dummy.png')
     country_code = models.CharField(max_length=5 ,default='+91')
+    postal_code = models.CharField(max_length=5, blank=True, null=True)
     is_approved = models.BooleanField(default=False)
     bio = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=100, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     address2 = models.TextField(blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
-    gender_choice = models.CharField(max_length=100, choices=GENDER_CHOICE, blank=True, null=True)
+    gender = models.CharField(max_length=100, choices=GENDERCHOICE.choices(), blank=True, null=True)
     is_suspended = models.BooleanField(default=False)
     document = models.FileField(upload_to='user_document', blank=True, null=True)
     objects = MyUserManager()
